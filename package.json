@@ -1,0 +1,49 @@
+{
+  "name": "boilerplate.game-server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "engines": {
+    "node": ">=4.5.0"
+  },
+  "engine-strict": true,
+  "scripts": {
+    "start": "node server init",
+    "server-dev": "nodemon server --watch ./server.js -- init -d",
+    "postinstall": "bash ./.bin/npm-postinstall.sh",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/the0neWhoKnocks/boilerplate.game-server.git"
+  },
+  "author": "Trevor Lemon",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/the0neWhoKnocks/boilerplate.game-server/issues"
+  },
+  "homepage": "https://github.com/the0neWhoKnocks/boilerplate.game-server#readme",
+  "devDependencies": {
+    "babel-core": "^6.23.1",
+    "babel-plugin-external-helpers": "^6.22.0",
+    "babel-preset-es2015-riot": "^1.1.0",
+    "browser-sync": "^2.18.7",
+    "chokidar": "^1.6.1",
+    "cli-color": "^1.1.0",
+    "express": "^4.14.1",
+    "glob-all": "^3.1.0",
+    "minimist": "^1.2.0",
+    "nodemon": "^1.11.0",
+    "opn": "^4.0.2",
+    "portscanner": "^2.1.1"
+  },
+  "dependencies": {
+    "body-parser": "^1.16.1",
+    "compression": "^1.6.2",
+    "firebase": "^3.9.0",
+    "nodemailer": "^4.0.1",
+    "riot": "^3.3.1",
+    "riotcontrol": "0.0.3",
+    "stylus": "^0.54.5"
+  }
+}

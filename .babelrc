@@ -1,0 +1,9 @@
+{
+  "compact": true, // speed up build time by leaving in whitespace and comments
+  "plugins": [
+    "external-helpers"
+  ],
+  "presets": [
+    "es2015-riot"
+  ]
+}

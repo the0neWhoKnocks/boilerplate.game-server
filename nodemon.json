@@ -1,0 +1,7 @@
+{
+  "events": {
+    "restart": "echo [ NODEMON ] Restarting Server"
+  },
+  "ignore": [],
+  "verbose": false
+}
