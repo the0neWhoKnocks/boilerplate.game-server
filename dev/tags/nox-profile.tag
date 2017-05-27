@@ -1,6 +1,9 @@
 <nox-profile>
-  <div class="bg { currentTheme }">
-    <div if={ userData.email } class="wrapper">
+  <div
+    if={ userData.email }
+    class="bg { currentTheme }"
+  >
+    <div class="wrapper">
       <nav class="theme-nav">
         <div class="theme-nav__btns {is--open:themeNavOpen}">
           <button class="theme-btn" data-theme="default" onclick={ setTheme }></button>
@@ -12,7 +15,13 @@
         </div>
       </nav>
       <button class="palette" onclick={ toggleThemeNav } title="Click to select theme"></button>
-      <nox-profile-avatar img-width="200" img-height="200"></nox-profile-avatar>
+      <nox-profile-avatar
+        ref="userAvatar"
+        img-width="200"
+        img-height="200"
+        avatar={ userData.photoURL }
+        on-render={ handleAvatarRender }
+      ></nox-profile-avatar>
       <form
         ref="form"
         method="POST"
@@ -51,8 +60,12 @@
 
         <button
           type="submit"
+          class={ is--processing:processing }
           disabled={ submitDisabled }
-        >Save</button>
+        >
+          Save
+          <nox-spinner ref="saveSpinner"></nox-spinner>
+        </button>
       </form>
     </div>
   </div>
@@ -215,12 +228,17 @@
       padding: 0;
       transition: all 0.25s;
       overflow: hidden;
+      position: relative;
 
+      &.is--processing,
       &:not([disabled]) {
         height: 2em;
         border-width: 0.1em;
         padding: 0.4em;
         margin-top: 0.5em;
+      }
+
+      &:not([disabled]) {
         cursor: pointer;
       }
     }
@@ -293,46 +311,54 @@
     let originalData = {};
     this.userData = opts.userData || {};
     this.submitDisabled = true;
+    this.processing = false;
     this.passwordInputType = 'password';
-    this.userAPI = opts.userAPI || {};
     this.updatedData = {};
     this.onUpdate = opts.onUpdate;
     this.themeNavOpen = false;
     this.currentTheme = this.userData.theme || '';
 
     function handleMount(ev){
+      window.profile = _self;
       setupDiffs();
     }
+
+    this.handleUserUpdate = function(updatedData){
+      originalData = updatedData;
+
+      _self.updatedData = {};
+      _self.processing = false;
+      _self.refs.saveSpinner.hide();
+      document.activeElement.blur();
+      _self.update();
+      _self.refs.userAvatar.reset();
+    };
+
+    this.handleUserUpdateError = function(err){
+      _self.submitDisabled = false;
+      _self.processing = false;
+      _self.refs.saveSpinner.hide();
+      _self.update();
+    };
 
     this.handleSubmit = function(ev){
       ev.preventDefault();
 
+      if( _self.themeNavOpen ) _self.toggleThemeNav();
+
       _self.submitDisabled = true;
+      _self.processing = true;
+      _self.refs.saveSpinner.show();
       _self.update();
 
-      _self.userAPI.update({
+      RiotControl.one(window.userAPI.events.USER_UPDATED, _self.handleUserUpdate);
+      RiotControl.one(window.userAPI.events.USER_UPDATE_ERROR, _self.handleUserUpdateError);
+      RiotControl.trigger(window.userAPI.events.USER_UPDATE, {
         creds: {
           email: _self.refs.email.value,
           password: _self.refs.password.value
         },
         data: _self.updatedData
-      })
-      .then(function(resp){
-        if( _self.onUpdate ) _self.onUpdate(resp);
-
-        for(var key in _self.updatedData){
-          originalData[key] = _self.updatedData[key];
-        }
-
-        _self.updatedData = {};
-        document.activeElement.blur();
-        _self.update();
-        alert(resp);
-      })
-      .catch(function(err){
-        _self.submitDisabled = false;
-        _self.update();
-        alert('Update Error: '+ err.message);
       });
     };
 
@@ -358,6 +384,12 @@
       _self.update();
     };
 
+    this.handleAvatarRender = function(dataURL){
+      _self.updatedData.avatar = dataURL;
+      _self.submitDisabled = false;
+      _self.update();
+    };
+
     function handleInput(ev){
       clearTimeout(_self.inputDebounce);
       _self.inputDebounce = setTimeout(function(){
@@ -377,7 +409,7 @@
         }
 
         // if there are updated items, it shouldn't be disabled
-        _self.submitDisabled = !Object.keys(_self.updatedData.length);
+        _self.submitDisabled = !Object.keys(_self.updatedData).length;
         _self.update();
       }, 200);
     }

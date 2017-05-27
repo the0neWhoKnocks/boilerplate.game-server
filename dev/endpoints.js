@@ -7,12 +7,10 @@ module.exports = {
     DB_CONFIG_ADD: `${ V1 }/dbconfig/add`,
     EMAIL_CONFIG_ADD: `${ V1 }/emailconfig/add`,
     USER_CREATE: `${ V1 }/user/create`,
-    //USER_CHECK: `${ V1 }/user/check`,
-    USER_ENCRYPT: `${ V1 }/user/encrypt`,
-    USER_DECRYPT: `${ V1 }/user/decrypt`,
+    USER_CHECK: `${ V1 }/user/check`,
     USER_PROPS: `${ V1 }/user/props`,
     USER_UPDATE: `${ V1 }/user/update`,
-    //USER_SIGN_IN: `${ V1 }/user/signin`,
-    //USER_SIGN_OUT: `${ V1 }/user/signout`
+    USER_SIGN_IN: `${ V1 }/user/signin`,
+    USER_SIGN_OUT: `${ V1 }/user/signout`
   }
 };

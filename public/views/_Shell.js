@@ -1,9 +1,9 @@
 function browserSyncScript(dev){
   if( !dev ) return '';
-  
+
   return `
     <script id="__bs_script__">
-      document.write("<script async src='http://HOST:8082/browser-sync/browser-sync-client.js?v=2.18.7'><\\/script>".replace("HOST", location.hostname) );
+      document.write("<script async src='//HOST:8082/browser-sync/browser-sync-client.js?v=2.18.7'><\\/script>".replace("HOST", location.hostname) );
     </script>
   `;
 }

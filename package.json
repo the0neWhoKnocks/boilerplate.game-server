@@ -10,6 +10,7 @@
   "scripts": {
     "start": "node server init",
     "server-dev": "nodemon server --watch ./server.js -- init -d",
+    "setup-certs": "bash ./.bin/certs/create-certs.sh",
     "postinstall": "bash ./.bin/npm-postinstall.sh",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -40,10 +41,13 @@
   "dependencies": {
     "body-parser": "^1.16.1",
     "compression": "^1.6.2",
+    "express-session": "^1.15.2",
     "firebase": "^3.9.0",
+    "helmet": "^3.6.0",
     "nodemailer": "^4.0.1",
     "riot": "^3.3.1",
     "riotcontrol": "0.0.3",
+    "socket.io": "^2.0.1",
     "stylus": "^0.54.5"
   }
 }

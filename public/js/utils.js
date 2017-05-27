@@ -94,14 +94,22 @@ window.utils = {
       case 200 :
         return resp.json();
         break;
+
+      case 204 :
+        return Promise.resolve();
+        break;
       
       default :
         return new Promise(function(resolve, reject){
-          resp.json().then(function(data){
+          resp.json()
+          .then(function(data){
             reject({
               msg: data.error,
               status: resp.status
             });
+          })
+          .catch(function(err){
+            console.error(err);
           });
         });
     }
@@ -125,6 +133,7 @@ window.utils = {
 
   request: function(opts){
     var reqData = {
+      credentials: 'include', // required so that cookies are sent
       headers: new Headers({
         Accept: 'application/json',
         'Content-Type': 'application/json'
@@ -147,7 +156,33 @@ window.utils = {
         break;
     }
 
-    return fetch( new Request(opts.url, reqData) );
+    return new Promise(function(resolve, reject){
+      fetch( new Request(opts.url, reqData) )
+      .then(function(resp){
+        var type = resp.headers.get('Content-Type');
+
+        switch(type){
+          case 'application/javascript' :
+            resp.text()
+            .then(function(respText){
+              //eval.call(window, respText);
+
+              var script = document.createElement('script');
+              script.text = respText;
+              document.body.appendChild(script);
+
+              resolve();
+            });
+            break;
+
+          default :
+            resolve(resp);
+        }
+      })
+      .catch(function(err){
+        console.error(err);
+      });
+    });
   },
 
   submitForm: function(form, successCallback, errorCallback){
@@ -167,5 +202,78 @@ window.utils = {
       if( errorCallback ) errorCallback(err);
       window.utils.handleError(err);
     });
+  },
+
+  clone: function(obj){
+    var duplicate = {};
+
+    for(var key in obj){
+      if( obj.hasOwnProperty(key) ){
+        var currProp = obj[key];
+
+        if( Array.isArray(currProp) ){
+          if( !duplicate[key] ) duplicate[key] = [];
+          duplicate[key] = duplicate[key].concat(currProp);
+        }else if(
+          !currProp
+          || typeof currProp === 'boolean'
+          || typeof currProp === 'function'
+          || typeof currProp === 'number'
+          || typeof currProp === 'string'
+        ){
+          duplicate[key] = currProp;
+        }else{
+          duplicate[key] = this.clone(currProp);
+        }
+      }
+    }
+
+    return duplicate;
+  },
+
+  combine: function(){
+    // get objects to combine
+    var items = [].slice.call(arguments);
+    // the first will be the starting point
+    var combined = items.shift();
+
+    for(var i=0; i<items.length; i++){
+      var currItem = items[i];
+
+      if( Array.isArray(currItem) ){
+        combined = combined.concat(currItem);
+      }else{
+        // create a dupe of the Object so as not to mutate the original
+        var dupeItem = this.clone(currItem);
+
+        for(var key in dupeItem){
+          if( dupeItem.hasOwnProperty(key) ){
+            var currProp = dupeItem[key];
+
+            // if it doesn't exist on the original, just add it
+            if( !combined[key] ){
+              combined[key] = currProp;
+            }else{
+              if( Array.isArray(currProp) ){
+                if( !combined[key] ) combined[key] = [];
+                combined[key] = combined[key].concat(currProp);
+              }else if(
+                !currProp
+                || typeof currProp === 'boolean'
+                || typeof currProp === 'function'
+                || typeof currProp === 'number'
+                || typeof currProp === 'string'
+              ){
+                combined[key] = currProp;
+              }else{
+                combined[key] = this.combine(combined[key], currProp);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return combined;
   }
 };

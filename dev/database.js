@@ -2,6 +2,8 @@ var color = require('cli-color');
 var firebase = require('firebase');
 var appConfig = require('../conf.app.js');
 
+var connectedOnce = false;
+
 // Get the config from the Firebase Console for your project.
 // Just go to Overview > and click on 'Add Firebase to your web app'.
 module.exports = function(config, connectionCB){
@@ -15,7 +17,8 @@ module.exports = function(config, connectionCB){
 
   connectedRef.on('value', function(snap){
     if( snap.val() === true ){
-      console.log( `${color.green.bold('[ CONNECTED ]')} to ${color.blue.bold(config.projectId)}` );
+      if( !connectedOnce ) console.log( `${color.green.bold('[ CONNECTED ]')} to ${color.blue.bold(config.projectId)}` );
+      connectedOnce = true;
 
       connectedRef.off();
 

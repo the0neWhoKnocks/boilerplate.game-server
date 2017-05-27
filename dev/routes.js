@@ -2,9 +2,10 @@
 
 var fs = require('fs');
 var color = require('cli-color');
+
 var endpoints = require('./endpoints.js');
 var utils = require('./utils.js');
-var user = require('./user.js');
+var userAPI = require('./user.js');
 
 
 module.exports = function(opts){
@@ -13,6 +14,7 @@ module.exports = function(opts){
   var baseModel = {
     appData: {
       endpoints: endpoints,
+      title: opts.config.titles.DEFAULT,
       urls: opts.config.urls
     },
     dev: opts.flags.dev,
@@ -78,22 +80,6 @@ module.exports = function(opts){
       });
     });
   }
-  
-  //function emailConfigured(){
-  //  return new Promise(function(resolve, reject){
-  //    fs.stat(opts.config.paths.EMAIL_CONFIG, function(err, stat){
-  //      if(err){
-  //        console.log('[ EMAIL ] not configured');
-  //        reject({
-  //          notConfigured: 'email'
-  //        });
-  //      }else{
-  //        console.log('[ EMAIL ] configured');
-  //        resolve(stat);
-  //      }
-  //    });
-  //  });
-  //}
   
   opts.server.get('*', function(req, res, next){
     try{
@@ -166,7 +152,7 @@ module.exports = function(opts){
       res.set('ETag', newestMTime);
     }
     
-    res.set('Content-Type', 'text/script');
+    res.set('Content-Type', 'application/javascript');
     res.status(200);
     res.send(concatenatedTags);
   });
@@ -214,37 +200,6 @@ module.exports = function(opts){
     }
   });
   
-  //opts.server.post(endpoints.v1.EMAIL_CONFIG_ADD, function(req, res){
-  //  var body = req.body;
-  //  var msg, respData;
-  //
-  //  if( body && body.email && body.pass ){
-  //    var fileContents =
-  //      "module.exports = {\n"+
-  //      `  email: '${ body.email }',\n`+
-  //      `  pass: '${ body.pass }'\n`+
-  //      '};';
-  //
-  //    try{
-  //      fs.writeFileSync(opts.config.paths.EMAIL_CONFIG, fileContents);
-  //
-  //      msg = `Saved email config: \n${ fileContents }`;
-  //      respData = {
-  //        msg: msg,
-  //        status: 200
-  //      };
-  //
-  //      console.log( `${color.green.bold('[ SUCCESS ]')} ${msg}` );
-  //
-  //      res.json(respData);
-  //    }catch(err){
-  //      utils.handleRespError(res, `Couldn't save email config: ${ err }`);
-  //    }
-  //  }else{
-  //    utils.handleRespError(res, 'No data Object provided');
-  //  }
-  //});
-  
   opts.server.post(endpoints.v1.USER_CREATE, function(req, res){
     var body = req.body;
     
@@ -253,36 +208,27 @@ module.exports = function(opts){
       && body.email
       && body.password
     ){
-      user.create({
+      userAPI.create({
         email: body.email,
         pass: body.password,
         res: res,
-        role: ( !_CONFIGURED ) ? user.roles.ADMIN : user.roles.DEFAULT
+        role: ( !_CONFIGURED ) ? userAPI.roles.ADMIN : userAPI.roles.DEFAULT
       });
     }else{
       utils.handleRespError(res, 'All required user data was not provided');
     }
   });
 
-  //opts.server.get(endpoints.v1.USER_CHECK, function(req, res){
-  //  user.check({
-  //    res: res
-  //  });
-  //});
-
-  opts.server.post(endpoints.v1.USER_ENCRYPT, function(req, res){
-    var body = req.body;
-
-    if( body && body.password ){
-      res.json({
-        pass: utils.encrypt( body.password.trim() )
-      });
-    }
+  opts.server.get(endpoints.v1.USER_CHECK, function(req, res){
+    userAPI.check({
+      req: req,
+      res: res
+    });
   });
 
   opts.server.get(endpoints.v1.USER_PROPS, function(req, res){
     if( req.query && req.query.uid ){
-      user.getProps({
+      userAPI.getProps({
         res: res,
         uid: req.query.uid
       });
@@ -295,10 +241,10 @@ module.exports = function(opts){
     var body = req.body;
 
     if( body ){
-      user.update({
+      userAPI.update({
         creds: body.creds,
-        data: body.newData,
-        uid: body.uid,
+        data: body.data,
+        req: req,
         res: res
       });
     }else{
@@ -306,34 +252,57 @@ module.exports = function(opts){
     }
   });
 
-  //opts.server.post(endpoints.v1.USER_SIGN_IN, function(req, res){
-  //  var body = req.body;
-  //
-  //  if(
-  //    body
-  //    && body.email
-  //    && body.password
-  //  ){
-  //    user.signIn({
-  //      email: body.email,
-  //      pass: body.password,
-  //      res: res,
-  //    });
-  //  }else{
-  //    utils.handleRespError(res, 'All required sign-in data was not provided');
-  //  }
-  //});
+  opts.server.post(endpoints.v1.USER_SIGN_IN, function(req, res){
+    var signInData = req.body;
+
+    if(
+      signInData
+      && signInData.email
+      && signInData.password
+    ){
+      userAPI.signIn({
+        email: signInData.email,
+        pass: signInData.password
+      })
+      .then(function(signInData){
+        userAPI.signOut()
+        .then(function(){
+          if( signInData.user.emailVerified ){
+            req.session.user = signInData.user;
+            res.json({
+              msg: `Signed in: '${ signInData.user.email }'`,
+              user: signInData.user
+            });
+          }else{
+            utils.handleRespError(res, `You haven't verified your email yet.`);
+          }
+        })
+        .catch(function(err){
+          utils.handleRespError(res, `Problem during disconnect: ${ err.message }`);
+        });
+      })
+      .catch(function(err){
+        utils.handleRespError(res, `Problem during sign-in: ${ err.message }`);
+      });
+    }else{
+      utils.handleRespError(res, 'All required sign-in data was not provided');
+    }
+  });
+
+  opts.server.get(endpoints.v1.USER_SIGN_OUT, function(req, res){
+    req.session.destroy();
+    res.json({
+      msg: 'Signed out'
+    });
+  });
 
   opts.server.get(opts.config.urls.PROFILE, function(req, res){
     const profileTemplate = require(`${opts.config.paths.VIEWS}/Profile.js`);
-    baseModel.appData.dbConfig = require(opts.config.paths.DB_CONFIG);
 
     res.send(shellTemplate(utils.combine({}, baseModel, {
       body: profileTemplate(),
       scripts: {
         body: [
-          '/js/vendor/firebase.js',
-          '/js/database.js',
           '/js/user.js',
           '/js/utils.js',
           '/js/page.profile.js'
@@ -345,14 +314,11 @@ module.exports = function(opts){
 
   opts.server.get('/', function(req, res){
     const gameTemplate = require(`${opts.config.paths.VIEWS}/Game.js`);
-    baseModel.appData.dbConfig = require(opts.config.paths.DB_CONFIG);
 
     res.send(shellTemplate(utils.combine({}, baseModel, {
       body: gameTemplate(),
       scripts: {
         body: [
-          '/js/vendor/firebase.js',
-          '/js/database.js',
           '/js/user.js',
           '/js/utils.js',
           '/js/page.game.js'

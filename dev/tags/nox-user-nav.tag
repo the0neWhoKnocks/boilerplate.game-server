@@ -6,23 +6,32 @@
     <button
       type="button"
       onclick={ toggleMenu }
-    >[] { displayName }</button>
+    >
+      <img
+        if={ user.photoURL }
+        class="avatar"
+        src={ user.photoURL }
+      >
+      { displayName }
+    </button>
     <ul if={ showMenu }>
       <li>
         <a
-          href={ profileURL }
+          href={ profileUrl }
         >Profile</a>
       </li>
       <li>
         <button
           type="button"
-          onclick={ handleSignOut }
+          onclick={ handleSignOutClick }
         >Sign Out</button>
       </li>
     </ul>
   </div>
   
   <style scoped>
+    $avatarSize = 2em;
+
     :scope,
     input,
     button, 
@@ -35,10 +44,24 @@
 
     }
 
+    .user-nav {
+      white-space: nowrap;
+      position: relative;
+
+      > button {
+        padding: 0.25em 0.5em 0.25em ($avatarSize + 0.25em);
+        background: transparent;
+        border: none;
+      }
+    }
+
     ul {
-      padding: 0;
-      margin: 0.25em 0 0;
+      padding: 0.25em 0 0;
+      margin: 0;
       list-style-type: none;
+      position: absolute;
+      top: 100%;
+      right: 0;
 
       > li {
         margin: 0;
@@ -46,11 +69,18 @@
         > a,
         > button {
           width: 100%;
+          color: currentColor;
           text-align: left;
-          padding: 0.25em;
+          text-decoration: none;
+          padding: 0.25em 0.5em;
           border: solid 1px #666;
           background: #ccc;
           display: block;
+
+          &:focus,
+          &:hover {
+            filter: invert(100%);
+          }
         }
       }
     }
@@ -58,6 +88,18 @@
     a,
     button {
       cursor: pointer;
+    }
+
+    .avatar {
+      height: $avatarSize;
+      display: inline-block;
+      vertical-align: top;
+      border-radius: 100%;
+      border: solid 3px rgba(255,255,255,0.5);
+      position: absolute;
+      top: 50%;
+      left: 0;
+      transform: translateY(-50%);
     }
 
     .user-nav {
@@ -68,16 +110,30 @@
   <script>
     const _self = this;
 
-    this.profileURL = opts.profileURL || '';
-    this.user = opts.user || null;
-    this.userAPI = opts.userAPI || {};
-    this.onSignOut = opts.onSignOut || null;
+    this.profileUrl = opts.profileUrl || window.appData.urls.PROFILE;
+    this.user = opts.userData || null;
     this.showMenu = false;
     setDisplayName();
 
-    this.handleMount = function(){};
-    this.handleUpdate = function(data){
+    this.handleMount = function(){
+      RiotControl.on(window.userAPI.events.USER_UPDATED, _self.handleUserUpdate);
+      RiotControl.on(window.userAPI.events.USER_SIGNED_OUT, _self.handleSignOut);
+    };
+
+    this.handleUserUpdate = function(data){
+      _self.user = data;
       setDisplayName();
+      _self.update();
+    };
+
+    this.handleSignOut = function(){
+      if( _self.isMounted ){
+        _self.user = null;
+        _self.update();
+      }else{
+        RiotControl.off(window.userAPI.events.USER_UPDATED, _self.handleUserUpdate);
+        RiotControl.off(window.userAPI.events.USER_SIGNED_OUT, _self.handleSignOut);
+      }
     };
 
     this.handleMouseLeave = function(ev){
@@ -98,18 +154,12 @@
       }
     };
 
-    this.handleSignOut = function(ev){
+    this.handleSignOutClick = function(ev){
       _self.toggleMenu();
 
-      _self.userAPI.signOut()
-      .then(function(){
-        _self.user = null;
-        _self.update();
-        if( _self.onSignOut ) _self.onSignOut();
-      });
+      RiotControl.trigger(window.userAPI.events.USER_SIGN_OUT);
     };
     
     this.on('mount', this.handleMount);
-    this.on('update', this.handleUpdate);
   </script>
 </nox-user-nav>

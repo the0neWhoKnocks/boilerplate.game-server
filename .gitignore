@@ -3,6 +3,8 @@ node_modules/
 .idea/
 public/**/vendor/
 public/js/tags/
+public/imgs/avatars/
+certs/
 
 # files
 conf.database.js

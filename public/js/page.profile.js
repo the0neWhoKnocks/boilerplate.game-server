@@ -1,44 +1,27 @@
-function handleUpdate(data){
-  window.topNav.update();
-}
-
 function loadProfile(userData){
-  window.utils.request({
-    url: window.appData.endpoints.v1.USER_PROPS,
-    data: {
-      uid: userData.uid
-    }
-  })
-  .then(window.utils.transformResp)
-  .then(function(props){
-    for(var key in props){
-      userData[key] = props[key];
-    }
+  riot.mount('nox-top-nav', {
+    absolutePos: true,
+    userData: userData
+  });
 
-    window.profile = riot.mount('nox-profile', {
-      userAPI: window.userAPI,
-      userData: userData,
-      onUpdate: handleUpdate
-    })[0];
-  })
-  .catch(function(err){
-    console.error(err);
+  riot.mount('nox-profile', {
+    userData: userData
   });
 }
 
 function unLoadProfile(){
   window.profile.unload();
+  window.topNav.hide();
 }
 
-window.topNav = riot.mount('nox-top-nav', {
-  absolutePos: true,
-  loginRequired: true,
-  userAPI: window.userAPI,
-  dbPromise: window.databaseAPI.initPromise,
-  onSignIn: loadProfile,
-  onSignOut: unLoadProfile
-})[0];
-
-window.databaseAPI.init({
-  config: window.appData.dbConfig
+riot.mount('nox-user-modal', {
+  actions: {
+    create: window.appData.endpoints.v1.USER_ADD,
+    signIn: window.appData.endpoints.v1.USER_SIGN_IN
+  }
 });
+
+RiotControl.one(window.userAPI.events.USER_INITIALIZED, loadProfile);
+RiotControl.on(window.userAPI.events.USER_SIGNED_IN, loadProfile);
+RiotControl.on(window.userAPI.events.USER_SIGNED_OUT, unLoadProfile);
+RiotControl.trigger(window.userAPI.events.USER_INIT);

@@ -6,7 +6,7 @@
   >
     <div
       class="modal-mask" 
-      title="Click to close"
+      title={ 'Click to close':!args.closeDisabled }
       onclick={ !args.closeDisabled ? closeModal : null }
     ></div>
     <div 
@@ -59,6 +59,7 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
+      z-index: 10;
       
       &-mask {
         background: rgba(0,0,0,0.25);
@@ -68,6 +69,7 @@
         left: 0;
         bottom: 0;
         right: 0;
+        z-index: 10;
         
         .has--close-disabled & {
           cursor: default;

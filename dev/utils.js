@@ -137,6 +137,7 @@ module.exports = {
     // check if there's a compiled tag for every source tag
     if( srcTags.length && cmpTags.length ){
       var cmpTagsStr = cmpTags.join('|').replace(new RegExp(outputPath, 'g'), '');
+      var cmpTagNdx = 0;
 
       for(var i=0; i<srcTags.length; i++){
         var srcTag = srcTags[i];
@@ -146,9 +147,10 @@ module.exports = {
         if( cmpTagsStr.indexOf(name) < 0 ){
           needsCompiling.push(srcTag);
         }else{
-          var cmpTag = cmpTags[i];
+          var cmpTag = cmpTags[cmpTagNdx];
           var srcMtime = (new Date( fs.statSync(srcTag).mtime )).getTime()/1000;
           var cmpMtime = (new Date( fs.statSync(cmpTag).mtime )).getTime()/1000;
+          cmpTagNdx++;
 
           // The comped tag will have a zeroed out millisecond value regardless of
           // setting the mtime to that of the source tag. So the millisecond value
@@ -297,10 +299,15 @@ module.exports = {
       if( obj.hasOwnProperty(key) ){
         var currProp = obj[key];
 
-        if(
-          typeof currProp === 'string'
+        if( Array.isArray(currProp) ){
+          if( !duplicate[key] ) duplicate[key] = [];
+          duplicate[key] = duplicate[key].concat(currProp);
+        }else if(
+          !currProp
+          || typeof currProp === 'boolean'
           || typeof currProp === 'function'
-          || Array.isArray(currProp)
+          || typeof currProp === 'number'
+          || typeof currProp === 'string'
         ){
           duplicate[key] = currProp;
         }else{
@@ -335,9 +342,15 @@ module.exports = {
             if( !combined[key] ){
               combined[key] = currProp;
             }else{
-              if(
-                typeof currProp === 'string'
+              if( Array.isArray(currProp) ){
+                if( !combined[key] ) combined[key] = [];
+                combined[key] = combined[key].concat(currProp);
+              }else if(
+                !currProp
+                || typeof currProp === 'boolean'
                 || typeof currProp === 'function'
+                || typeof currProp === 'number'
+                || typeof currProp === 'string'
               ){
                 combined[key] = currProp;
               }else{

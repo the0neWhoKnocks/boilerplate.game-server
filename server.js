@@ -2,18 +2,21 @@ var fs = require('fs');
 var path = require('path');
 var compression = require('compression');
 var express = require('express');
+var io = require('socket.io');
 var color = require('cli-color');
 var browserSync = require('browser-sync');
 var opn = require('opn');
 var portscanner = require('portscanner');
 var flags = require('minimist')(process.argv.slice(2));
 var bodyParser = require('body-parser');
+var helmet = require('helmet');
+var session = require('express-session');
 
 var appConfig = require('./conf.app.js');
 var database = require('./dev/database.js');
 var utils = require('./dev/utils.js');
 var chokidar = require('chokidar');
-var watcher, shellTemplate;
+var watcher;
 
 // =============================================================================
 
@@ -45,20 +48,42 @@ var CHROME = function(){
     case 'LINUX': return 'google-chrome';
   }
 }();
+var httpsOpts = {
+  cert: fs.readFileSync(appConfig.paths.HTTPS_CERT),
+  key: fs.readFileSync(appConfig.paths.HTTPS_KEY)
+};
 
 var app = {
   init: function(){
     this.expressInst = express();
-    this.server = require('http').createServer(this.expressInst);
+    this.server = require('https').createServer(httpsOpts, this.expressInst);
+    // setup socket so external requests show up in the client
+    io = io(this.server);
+    // add some protection
+    this.expressInst.use(helmet());
     // enable gzip
     this.expressInst.use(compression());
+    // add session support for users
+    this.expressInst.set('trust proxy', 1);
+    this.expressInst.use(session({
+      cookie: {
+        httpOnly: true,
+        secureProxy: true,
+        secure: true
+      },
+      name: appConfig.SESSION_NAME,
+      resave: true,
+      saveUninitialized: true,
+      secret: appConfig.SESSION_SECRET
+    }));
     // doc root is `public`
     this.expressInst.use(express.static(appConfig.paths.PUBLIC));
     // allows for reading POST data
     this.expressInst.use(bodyParser.json());   // to support JSON-encoded bodies
     this.expressInst.use(bodyParser.urlencoded({ // to support URL-encoded bodies
       extended: true
-    })); 
+    }));
+
     // bind server routes
     require('./dev/routes.js')({
       config: appConfig,
@@ -169,16 +194,52 @@ var app = {
     
     opn(data.url, {
       app: [CHROME],
-      //app: [CHROME, '--incognito'],
       wait: false // no need to wait for app to close
     });
   },
-  
+
+  setupSocketListeners: function(){
+    var players = {};
+    var socketList = {};
+
+    io.on('connection', function(socket){
+      //console.log('[ SOCKET ] connected: ', socket.id);
+
+      function dispatchPlayerDisconnect(uid){
+        delete players[uid];
+        io.sockets.emit('server.playerDisconnected', uid);
+      }
+
+      socket.on('client.playerJoined', function(data){
+        players[data.uid] = data;
+        socketList[socket.id] = data.uid;
+
+        io.sockets.emit('server.playerJoined', players);
+      });
+
+      socket.on('client.playerUpdate', function(data){
+        utils.combine(players[data.uid], data);
+        // tell all users except the one who updated
+        socket.broadcast.emit('server.playerUpdate', data);
+      });
+
+      socket.on('disconnect', function(){
+        var uid = socketList[socket.id];
+        dispatchPlayerDisconnect(uid);
+        delete socketList[socket.id];
+      });
+      socket.on('client.playerDisconnected', function(uid){
+        socket.disconnect();
+        dispatchPlayerDisconnect(uid);
+      });
+    });
+  },
+
   startServer: function(){
     var _self = this;
     
     this.server.listen(appConfig.PORT, function(){  
-      var url = 'http://localhost:'+ appConfig.PORT +'/';
+      var url = 'https://localhost:'+ appConfig.PORT +'/';
       var firstRunComplete = false;
       
       utils.compileRiotTags(function(err){
@@ -187,6 +248,11 @@ var app = {
         if( !firstRunComplete ){
           browserSync.init({
             browser: CHROME,
+            ghostMode: false, // disable mirroring of actions to browsers
+            https: {
+              cert: appConfig.paths.HTTPS_CERT,
+              key: appConfig.paths.HTTPS_KEY
+            },
             files: [ // watch these files
               appConfig.paths.PUBLIC
             ],
@@ -199,6 +265,8 @@ var app = {
           }));
           
           firstRunComplete = true;
+
+          _self.setupSocketListeners();
         }        
       }, flags.dev);
     });
