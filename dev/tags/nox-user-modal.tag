@@ -38,6 +38,7 @@
         > Remember me.
       </label>
       <button
+        if={ parent.hasSignIn }
         type="submit"
         value="signin"
         class="sign-in-btn"
@@ -47,8 +48,9 @@
         Sign In
         <nox-spinner ref="signInSpinner"></nox-spinner>
       </button>
-      <div class="separator-title" data-text="Or">Or</div>
+      <div if={ parent.hasSignIn && parent.hasCreate } class="separator-title" data-text="Or">Or</div>
       <button
+        if={ parent.hasCreate }
         type="button"
         value="create"
         onclick={ parent.handleCreate }
@@ -166,6 +168,8 @@
     this.emailVal = '';
     this.passwordVal = '';
     this.rememberMeChecked = false;
+    this.hasSignIn = (opts.hasSignIn != undefined) ? opts.hasSignIn : true;
+    this.hasCreate = (opts.hasCreate != undefined) ? opts.hasCreate : true;
 
     this.handleMount = function(ev){
       window.userModal = _self;
@@ -284,7 +288,12 @@
     // handles if a user hits Enter
     this.handleSubmit = function(ev){
       ev.preventDefault();
-      _self.handleSignIn(ev);
+
+      if( _self.hasSignIn ){
+        _self.handleSignIn(ev);
+      }else{
+        _self.handleCreate(ev);
+      }
     };
 
     this.handleSignIn = function(ev){

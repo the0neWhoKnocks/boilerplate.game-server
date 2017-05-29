@@ -9,11 +9,16 @@ var userAPI = require('./user.js');
 
 
 module.exports = function(opts){
+  // only expose admin endpoints within the admin
+  var filteredEndpoints = utils.clone(endpoints);
+  for(var version in filteredEndpoints){
+    delete filteredEndpoints[version].admin;
+  }
 
   var shellTemplate = require(`${opts.config.paths.VIEWS}/_Shell.js`);
   var baseModel = {
     appData: {
-      endpoints: endpoints,
+      endpoints: filteredEndpoints,
       title: opts.config.titles.DEFAULT,
       urls: opts.config.urls
     },
@@ -242,7 +247,6 @@ module.exports = function(opts){
 
     if( body ){
       userAPI.update({
-        creds: body.creds,
         data: body.data,
         req: req,
         res: res
@@ -296,6 +300,56 @@ module.exports = function(opts){
     });
   });
 
+  // ===========================================================================
+
+  opts.server.get(endpoints.v1.admin.USERS, function(req, res){
+    if(
+      req.session
+      && req.session.user
+      && req.session.user.role === opts.config.roles.ADMIN
+    ){
+      var user = req.session.user;
+
+      userAPI.signIn({
+        email: user.email,
+        pass: user.password
+      })
+      .then(function(signInData){
+        var usersRef = signInData.dbAPI.db().ref('/users');
+
+        usersRef.once('value', function(snap){
+          var userData = snap.val();
+
+          userAPI.signOut()
+          .then(function(){
+            for(var uid in userData){
+              var unorderedData = userData[uid];
+              var orderedData = {
+                status: ( opts._socket.players[uid] ) ? 'connected' : 'disconnected',
+                verified: unorderedData.verified || false,
+                email: unorderedData.email,
+                role: unorderedData.role
+              };
+
+              userData[uid] = orderedData;
+            }
+
+            res.json({
+              users: userData
+            });
+          });
+        });
+      })
+      .catch(function(err){
+        utils.handleRespError(res, err.message);
+      });
+    }else{
+      utils.handleRespError(res, "Access Denied");
+    }
+  });
+
+  // ===========================================================================
+
   opts.server.get(opts.config.urls.PROFILE, function(req, res){
     const profileTemplate = require(`${opts.config.paths.VIEWS}/Profile.js`);
 
@@ -310,6 +364,45 @@ module.exports = function(opts){
       },
       viewName: 'profile'
     })));
+  });
+
+  opts.server.get(`${ opts.config.urls.ADMIN }/:page?`, function(req, res){
+    const page = req.params.page;
+    const adminTemplate = require(`${opts.config.paths.VIEWS}/Admin.js`);
+    const adminModel = {
+      scripts: {
+        body: [
+          '/js/vendor/socket.io.slim.js',
+          '/js/user.js',
+          '/js/utils.js',
+          '/js/page.admin.js'
+        ]
+      },
+      viewName: 'admin'
+    };
+    let templateModel = {};
+
+    // ensure the admin page is only reachable if an admin is logged in
+    if( req.session.user ){
+      if( req.session.user.role === opts.config.roles.ADMIN ){
+        templateModel.user = req.session.user;
+        adminModel.appData = {
+          admin: {
+            user: templateModel.user
+          },
+          endpoints: endpoints,
+          roles: opts.config.roles
+        };
+
+        if( page ) adminModel.appData.page = page;
+      }else{
+        templateModel.user = 'not allowed';
+      }
+    }
+
+    adminModel.body = adminTemplate(templateModel);
+
+    res.send(shellTemplate(utils.combine({}, baseModel, adminModel)));
   });
 
   opts.server.get('/', function(req, res){

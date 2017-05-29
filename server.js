@@ -54,6 +54,11 @@ var httpsOpts = {
 };
 
 var app = {
+  _socket: {
+    players: {},
+    socketList: {}
+  },
+
   init: function(){
     this.expressInst = express();
     this.server = require('https').createServer(httpsOpts, this.expressInst);
@@ -86,6 +91,7 @@ var app = {
 
     // bind server routes
     require('./dev/routes.js')({
+      _socket: this._socket,
       config: appConfig,
       flags: flags,
       server: this.expressInst
@@ -199,34 +205,33 @@ var app = {
   },
 
   setupSocketListeners: function(){
-    var players = {};
-    var socketList = {};
+    var _self = this;
 
     io.on('connection', function(socket){
       //console.log('[ SOCKET ] connected: ', socket.id);
 
       function dispatchPlayerDisconnect(uid){
-        delete players[uid];
+        delete _self._socket.players[uid];
         io.sockets.emit('server.playerDisconnected', uid);
       }
 
       socket.on('client.playerJoined', function(data){
-        players[data.uid] = data;
-        socketList[socket.id] = data.uid;
+        _self._socket.players[data.uid] = data;
+        _self._socket.socketList[socket.id] = data.uid;
 
-        io.sockets.emit('server.playerJoined', players);
+        io.sockets.emit('server.playerJoined', _self._socket.players);
       });
 
       socket.on('client.playerUpdate', function(data){
-        utils.combine(players[data.uid], data);
+        utils.combine(_self._socket.players[data.uid], data);
         // tell all users except the one who updated
         socket.broadcast.emit('server.playerUpdate', data);
       });
 
       socket.on('disconnect', function(){
-        var uid = socketList[socket.id];
+        var uid = _self._socket.socketList[socket.id];
         dispatchPlayerDisconnect(uid);
-        delete socketList[socket.id];
+        delete _self._socket.socketList[socket.id];
       });
       socket.on('client.playerDisconnected', function(uid){
         socket.disconnect();

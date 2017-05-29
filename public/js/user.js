@@ -65,12 +65,18 @@ function UserStore(){
     window.userAPI
     .update(newData)
     .then(function(resp){
-      for(var key in resp.data){
-        _self.userData[key] = resp.data[key];
-      }
-
       console.log(resp.msg);
-      _self.trigger(_self.events.USER_UPDATED, _self.userData);
+
+      // won't be viable in admin users section
+      if( _self.userData ){
+        for( var key in resp.data ){
+          _self.userData[key] = resp.data[key];
+        }
+
+        _self.trigger(_self.events.USER_UPDATED, _self.userData);
+      }else{
+        _self.trigger(_self.events.USER_UPDATED);
+      }
     })
     .catch(function(err){
       console.error('Update Error: '+ err);
@@ -95,7 +101,6 @@ var userAPI = {
       window.utils.request({
         url: window.appData.endpoints.v1.USER_CHECK
       })
-      .then(window.utils.transformResp)
       .then(function(data){
         if( data && data.user ){
           _self.userData = data.user;
@@ -129,7 +134,6 @@ var userAPI = {
           password: opts.password
         }
       })
-      .then(window.utils.transformResp)
       .then(function(data){
         resolve(data);
       })
@@ -148,7 +152,6 @@ var userAPI = {
         method: 'post',
         data: opts
       })
-      .then(window.utils.transformResp)
       .then(function(resp){
         _self.userData = resp.user;
 
@@ -169,7 +172,6 @@ var userAPI = {
       window.utils.request({
         url: window.appData.endpoints.v1.USER_SIGN_OUT
       })
-      .then(window.utils.transformResp)
       .then(function(data){
         _self.userData = undefined;
 
@@ -191,19 +193,20 @@ var userAPI = {
         url: window.appData.endpoints.v1.USER_UPDATE,
         method: 'put',
         data: {
-          creds: opts.creds,
           data: opts.data
         }
       })
-      .then(window.utils.transformResp)
       .then(function(resp){
-        for(var key in resp.data){
-          if( resp.data.hasOwnProperty(key) ){
-            _self.userData[key] = resp.data[key];
+        // won't be viable in admin users section
+        if( _self.userData ){
+          for(var key in resp.data){
+            if( resp.data.hasOwnProperty(key) ){
+              _self.userData[key] = resp.data[key];
+            }
           }
-        }
 
-        RiotControl.trigger(_self.events.USER_SET_DATA, _self.userData);
+          RiotControl.trigger(_self.events.USER_SET_DATA, _self.userData);
+        }
 
         resolve(resp);
       })

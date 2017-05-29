@@ -354,10 +354,6 @@
       RiotControl.one(window.userAPI.events.USER_UPDATED, _self.handleUserUpdate);
       RiotControl.one(window.userAPI.events.USER_UPDATE_ERROR, _self.handleUserUpdateError);
       RiotControl.trigger(window.userAPI.events.USER_UPDATE, {
-        creds: {
-          email: _self.refs.email.value,
-          password: _self.refs.password.value
-        },
         data: _self.updatedData
       });
     };

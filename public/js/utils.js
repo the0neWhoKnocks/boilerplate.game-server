@@ -89,32 +89,6 @@ window.utils = {
     return ( returnString ) ? JSON.stringify(data) : data;
   },
   
-  transformResp: function(resp){
-    switch( resp.status ){
-      case 200 :
-        return resp.json();
-        break;
-
-      case 204 :
-        return Promise.resolve();
-        break;
-      
-      default :
-        return new Promise(function(resolve, reject){
-          resp.json()
-          .then(function(data){
-            reject({
-              msg: data.error,
-              status: resp.status
-            });
-          })
-          .catch(function(err){
-            console.error(err);
-          });
-        });
-    }
-  },
-  
   handleError: function(err){
     console.error(err.message);
   },
@@ -157,12 +131,22 @@ window.utils = {
     }
 
     return new Promise(function(resolve, reject){
+      function parseContentType(header){
+        if( header.indexOf('application/javascript') > -1 ){
+          return 'javascript';
+        }else if( header.indexOf('application/json') > -1 ){
+          return 'json';
+        }
+
+        return '';
+      }
+
       fetch( new Request(opts.url, reqData) )
       .then(function(resp){
-        var type = resp.headers.get('Content-Type');
+        var type = parseContentType(resp.headers.get('Content-Type'));
 
         switch(type){
-          case 'application/javascript' :
+          case 'javascript' :
             resp.text()
             .then(function(respText){
               //eval.call(window, respText);
@@ -175,12 +159,20 @@ window.utils = {
             });
             break;
 
+          case 'json' :
+            resp.json()
+            .then(function(data){
+              resolve(data);
+            });
+            break;
+
           default :
             resolve(resp);
         }
       })
       .catch(function(err){
         console.error(err);
+        reject(err);
       });
     });
   },
@@ -196,7 +188,6 @@ window.utils = {
     });
 
     fetch(req)
-    .then(window.utils.transformResp)
     .then(successCallback)
     .catch(function(err){
       if( errorCallback ) errorCallback(err);
@@ -275,5 +266,75 @@ window.utils = {
     }
 
     return combined;
+  },
+
+  /**
+   * Add a number of characters to the beginning of a value
+   * @param	{String} str - What you want to add leading characters to.
+   * @param	{String} [chars] - This acts as the final length of your string & what you want the leading characters to be.
+   * @returns {String}
+   * @example
+   * // returns "001"
+   * addLeading('1', '000')
+   */
+  addLeading: function(str, chars){
+    str = (str) ? String(str) : chars;
+    chars = (chars) ?  chars : 'XXXX';
+
+    return chars.substring(chars.length-str.length, 0)+str;
+  },
+
+  getUrlParams: function(url){
+    if( url && !url.split('?')[1] ){
+      console.warn( "Can't get query params from - "+ url );
+      return;
+    }
+    
+    var retObj = {};
+    var query = (url) ? url.split('?')[1] : window.location.search.substring(1);
+
+    if( query != '' ){
+      var params = query.split('&');
+
+      for( var i=0; i<params.length; i++ ){
+        var prop = params[i].split('=');
+
+        if( prop[0] && prop[0] != '' ){
+          retObj[prop[0]] = (prop[1]) ? decodeURIComponent( prop[1] ) : prop[1];
+        }
+      }
+    }
+
+    return retObj;
+  },
+
+  /**
+   * Traverses an elements hierarchy until it finds an element with the
+   * specified selectors.
+   *
+   * @param {HTMLElement} el - The element that the parent traversal will occur on.
+   * @param {string} selector - A selector that's acceptable by `querySelector`.
+   * @returns {HTMLElement|null}
+   */
+  parentBySelector: function(el, selector){
+    var climbTree = true;
+
+    if( el && selector ){
+      while( climbTree ){
+        el = el.parentNode;
+
+        if( el.nodeName === 'HTML' ){
+          climbTree = false;
+        }else{
+          var result = el.querySelector(selector);
+          if( result ){
+            climbTree = false;
+            return result;
+          }
+        }
+      }
+    }
+
+    return null;
   }
 };

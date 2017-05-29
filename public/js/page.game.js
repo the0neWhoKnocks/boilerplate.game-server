@@ -61,12 +61,7 @@ function unLoadGame(){
   window.game.unload();
 }
 
-riot.mount('nox-user-modal', {
-  actions: {
-    create: window.appData.endpoints.v1.USER_ADD,
-    signIn: window.appData.endpoints.v1.USER_SIGN_IN
-  }
-});
+riot.mount('nox-user-modal');
 
 RiotControl.one(window.userAPI.events.USER_INITIALIZED, handleUser);
 RiotControl.on(window.userAPI.events.USER_SIGNED_IN, handleUser);

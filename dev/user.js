@@ -50,6 +50,7 @@ module.exports = {
       .then(function(user){
         var usersRef = dbAPI.db().ref(`/users/${ user.uid }`);
         var userObj = {
+          email: email,
           password: pass,
           role: opts.role
         };
@@ -118,6 +119,7 @@ module.exports = {
                 uid: user.uid
               };
 
+              // appends custom data to FB user Object
               for(var key in props){
                 if( props.hasOwnProperty(key) ){
                   var val = props[key];
@@ -137,10 +139,26 @@ module.exports = {
                 }
               }
 
-              resolve({
-                dbAPI: dbAPI,
-                user: normalizedData
-              });
+              // if the user's email was verified, store it since FB doesn't expose that easily
+              if( normalizedData.emailVerified && !props.emailVerified ){
+                propsRef.update({
+                  verified: true
+                })
+                .then(function(){
+                  resolve({
+                    dbAPI: dbAPI,
+                    user: normalizedData
+                  });
+                })
+                .catch(function(err){
+                  reject(`Couldn't update user after sign in: "${ err.message }"`);
+                });
+              }else{
+                resolve({
+                  dbAPI: dbAPI,
+                  user: normalizedData
+                });
+              }
             });
           }
         })
@@ -200,9 +218,15 @@ module.exports = {
   update: function(opts){
     var _self = this;
     var newData = opts.data;
-    var creds = opts.creds;
     var req = opts.req;
     var res = opts.res;
+    var creds = {};
+
+    if( !req.session || !req.session.user ){
+      utils.handleRespError(res, "Unauthorized");
+    }else{
+      creds = req.session.user;
+    }
 
     _self.signIn({
       email: creds.email,
@@ -238,6 +262,7 @@ module.exports = {
     .then(function(signInData){
       var currUser = signInData.dbAPI.auth().currentUser;
       var promises = [];
+      var updatedViaAdmin = false;
 
       // https://firebase.google.com/docs/auth/web/manage-users
       if(
@@ -281,15 +306,26 @@ module.exports = {
         var propsPromise = new Promise(function(resolve, reject){
           var usersRef = signInData.dbAPI.db().ref(`/users/${ currUser.uid }`);
 
-          usersRef.update(newData)
-          .then(function(){
-            resolve({
-              msg: `Updated custom props with: ${ JSON.stringify(newData, null, 2) }`,
-              data: newData
+          // to account for admin updates, get the current user's role
+          usersRef.once('value', function(data){
+            var props = data.val();
+
+            // allow only admin to update props for other users
+            if( newData.uid && props.role === _self.roles.ADMIN ){
+              usersRef = signInData.dbAPI.db().ref(`/users/${ newData.uid }`);
+              updatedViaAdmin = true;
+            }
+
+            usersRef.update(newData)
+            .then(function(){
+              resolve({
+                msg: `Updated custom props with: ${ JSON.stringify(newData, null, 2) }`,
+                data: newData
+              });
+            })
+            .catch(function(err){
+              reject(`Couldn't update user: "${ err.message }"`);
             });
-          })
-          .catch(function(err){
-            reject(`Couldn't update user: "${ err.message }"`);
           });
         });
 
@@ -315,8 +351,12 @@ module.exports = {
                 var currVal = curr.data[key];
 
                 respData.data[key] = currVal;
-                // update session data otherwise it'll be stale on refresh
-                req.session.user[key] = currVal;
+
+                // only update user session data if not updating another user via admin
+                if( !updatedViaAdmin ){
+                  // update session data otherwise it'll be stale on refresh
+                  req.session.user[key] = currVal;
+                }
               }
             }
           }

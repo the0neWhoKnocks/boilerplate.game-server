@@ -17,6 +17,7 @@ var conf = {
     DEFAULT: 'Game Server'
   },
   urls: {
+    ADMIN: '/admin',
     PROFILE: '/profile'
   }
 };

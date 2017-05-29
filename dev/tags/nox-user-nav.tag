@@ -121,9 +121,11 @@
     };
 
     this.handleUserUpdate = function(data){
-      _self.user = data;
-      setDisplayName();
-      _self.update();
+      if( data ){
+        _self.user = data;
+        setDisplayName();
+        _self.update();
+      }
     };
 
     this.handleSignOut = function(){
