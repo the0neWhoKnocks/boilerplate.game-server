@@ -1,8 +1,8 @@
 <nox-admin-users>
   <div if={ users } class="wrapper">
-    <nox-pagination ref="topNav" items={ users }></nox-pagination>
-    <nox-data-table ref="table" headers={ headers } items={ users }></nox-data-table>
-    <nox-pagination ref="btmNav" items={ users }></nox-pagination>
+    <nox-pagination ref="topNav"></nox-pagination>
+    <nox-data-table ref="table"></nox-data-table>
+    <nox-pagination ref="btmNav"></nox-pagination>
   </div>
   <div if={ !users } class="loader">
     <nox-spinner ref="loader"></nox-spinner>
@@ -21,19 +21,22 @@
       box-sizing: border-box;
     }
 
-    .wrapper {
+    > .wrapper {
       border-radius: 0.5em;
       border: solid 0.2em #333;
       overflow: hidden;
     }
 
-    .loader {
+    > .loader {
       position: relative;
-    }
 
-    nox-spinner {
-      right: 50%;
-      font-size: 2em;
+      nox-spinner {
+
+        .wrapper {
+          right: 50%;
+          font-size: 2em;
+        }
+      }
     }
 
     nox-data-table {
@@ -50,7 +53,7 @@
       }
 
       col.col-5 {
-        width: 1em;
+        width: 4.5em;
       }
 
       td {
@@ -73,15 +76,14 @@
           }
         }
 
-        &.col-spinner {
+        &.col-controls {
+          text-align: center;
+          position: relative;
 
           nox-spinner {
-            position: relative;
-            right: initial;
-            top: initial;
-            transform: initial;
-            font-size: 1em;
-            vertical-align: middle;
+            .wrapper {
+              background: #fff;
+            }
           }
         }
       }
@@ -97,37 +99,52 @@
       NOT_VERIFIED: '✘'
     };
     let trSpinners = {};
-    this.headers = [ { label: '' }, { label: '' }, { label: 'Email' }, { label: 'Role' }, { label: '' } ];
+    this.headers = [ { label: '' }, { label: '' }, { label: 'Email' }, { label: 'Role' } ];
     this.users = opts.users;
 
-    this.handleRoleChange = function(ev){
-      const el = ev.currentTarget;
-      const parentRow = window.utils.parentBySelector(el, '[data-row-id]');
-      const newRole = Number(el.value);
-      const uid = parentRow.dataset.rowId;
-      const currSpinner = trSpinners[uid];
+    function handleSaveClick(data){
+      const oldData = _self.users[data.id];
+      let updatedData;
 
-      if( uid ){
-        currSpinner.show();
+      // check if data was updated before hitting the server
+      for(let prop in oldData){
+        if( data[prop] && data[prop] != oldData[prop] ){
+          if( !updatedData ) updatedData = {};
+          updatedData[prop] = data[prop];
+        }
+      }
+
+      if( updatedData ){
+        updatedData.uid = data.id;
+
+        data.spinner.show();
 
         RiotControl.one(window.userAPI.events.USER_UPDATED, function(){
-          console.log('Update user role to:', newRole);
-          currSpinner.hide();
+          delete updatedData.uid;
+
+          // update old data so future checks are valid.
+          for(let prop in updatedData){
+            oldData[prop] = updatedData[prop];
+          }
+
+          console.log('Update user data:', updatedData);
+          data.spinner.hide();
         });
         RiotControl.one(window.userAPI.events.USER_UPDATE_ERROR, function(err){
           console.error("Error updating user role:", err);
-          currSpinner.hide();
+          data.spinner.hide();
         });
         RiotControl.trigger(window.userAPI.events.USER_UPDATE, {
-          data: {
-            uid: uid,
-            role: newRole
-          }
+          data: updatedData
         });
       }else{
-        console.error("No UID specified for 'role' update.");
+        console.warn("[ ADMIN ] Data hasn't changed, skipping update.");
       }
-    };
+    }
+
+    function handleDeleteClick(data){
+
+    }
 
     function transformData(data){
       const transformed = {};
@@ -142,17 +159,23 @@
           switch(prop){
             case 'status' :
               val = {
+                modifier: ( val === 'connected' ) ? 'is--online' : 'is--offline',
                 text: ( val === 'connected' ) ? chars.ONLINE : chars.OFFLINE,
-                title: ( val === 'connected' ) ? 'online' : 'offline',
-                modifier: ( val === 'connected' ) ? 'is--online' : 'is--offline'
+                title: ( val === 'connected' ) ? 'online' : 'offline'
               };
               break;
 
             case 'verified' :
               val = {
+                modifier: ( val ) ? 'is--verified' : 'is--not-verified',
                 text: ( val ) ? chars.VERIFIED : chars.NOT_VERIFIED,
-                title: ( val ) ? 'verified' : 'not verified',
-                modifier: ( val ) ? 'is--verified' : 'is--not-verified'
+                title: ( val ) ? 'verified' : 'not verified'
+              };
+              break;
+
+            case 'email' :
+              val = {
+                text: val
               };
               break;
 
@@ -170,7 +193,7 @@
               }
 
               val = {
-                onchange: _self.handleRoleChange,
+                editable: true,
                 options: opts
               };
               break;
@@ -179,9 +202,6 @@
           obj[prop] = val;
         }
 
-        // append column at end for spinner
-        obj.spinner = '';
-
         transformed[uid] = obj;
       }
 
@@ -189,11 +209,11 @@
     }
 
     function setTableData(updatedUID){
+      const uids = Object.keys(_self.users);
       const pageNum = _self.refs.topNav.pageNumber;
       const itemsPerPage = _self.refs.topNav.itemsPerPage;
       const start = (pageNum - 1) * itemsPerPage;
-      const end = start + itemsPerPage;
-      const uids = Object.keys(_self.users);
+      const end = ( uids.length < itemsPerPage ) ? uids.length : start + itemsPerPage;
       let currUserData = {};
       let shouldUpdate = true;
 
@@ -208,18 +228,9 @@
       if( shouldUpdate ){
         _self.refs.table.update({
           headers: _self.headers,
-          items: transformData(currUserData)
-        });
-
-        trSpinners = {};
-        _self.refs.table.root.querySelectorAll('tr[data-row-id]').forEach(function(tr){
-          var uid = tr.dataset.rowId;
-          var spinner = document.createElement('nox-spinner');
-          var td = tr.querySelector('.col-spinner');
-
-          td.innerHTML = '';
-          td.appendChild(spinner);
-          trSpinners[uid] = riot.mount(`tr[data-row-id="${ uid }"] nox-spinner`)[0];
+          items: transformData(currUserData),
+          onSave: handleSaveClick,
+          onDelete: handleDeleteClick
         });
       }
     }

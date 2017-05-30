@@ -10,7 +10,7 @@ if( !window.appData.admin ){
   RiotControl.on(window.userAPI.events.USER_SIGNED_IN, loadAdmin);
   RiotControl.trigger(window.userAPI.events.USER_INIT);
 }else{
-  riot.mount('nox-admin', {
+  window.admin = riot.mount('nox-admin', {
     userData: window.appData.admin.user
-  });
+  })[0];
 }

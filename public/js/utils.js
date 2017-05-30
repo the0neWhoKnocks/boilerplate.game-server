@@ -333,6 +333,8 @@ window.utils = {
           }
         }
       }
+    }else{
+      throw new Error('Requires element & selector');
     }
 
     return null;
