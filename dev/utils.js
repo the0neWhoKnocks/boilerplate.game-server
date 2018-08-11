@@ -9,7 +9,7 @@ var chokidar = require('chokidar');
 var crypto = require('crypto');
 var appConfig = require('../conf.app.js');
 var riotConfig = require(appConfig.paths.RIOT_CONFIG);
-
+var _localization = require(appConfig.paths.LOCALIZATION);
 
 function writeCompileMessage(tags, updating, isLast){
   var rootPath = appConfig.paths.ROOT.replace(/\\/g, '/');
@@ -70,9 +70,40 @@ function buildTagsQueue(tagPaths, srcPath, outputPath){
   return queue;
 }
 
+function insertLocalization(fileText){
+  var greedyRegEx = /(?:"|')localization\[(?:"|')(.*)(?:"|')\](?:"|')/g;
+  var granularRegEx = new RegExp(greedyRegEx.source);
+  var lVars = fileText.match(greedyRegEx);
+
+  if( lVars && lVars.length ){
+    // account for multiple localizations in a file
+    for(var l=0; l<lVars.length; l++){
+      var locVar = lVars[l];
+      var matches = locVar.match(granularRegEx);
+
+      if( matches && matches[1] ){
+        var moduleLocalization = {};
+
+        // find each key in all languages and compile a localization map for each component.
+        for(var lang in _localization){
+          for(var key in _localization[lang]){
+            if( key === matches[1] ){
+              moduleLocalization[lang] = _localization[lang][key];
+            }
+          }
+        }
+
+        fileText = fileText.replace(locVar, JSON.stringify(moduleLocalization));
+      }
+    }
+  }
+
+  return fileText;
+}
+
 function compileRiotTag(srcPath, outPath){
   try{
-    var srcTag = fs.readFileSync(srcPath, 'utf8');
+    var srcTag = insertLocalization( fs.readFileSync(srcPath, 'utf8') );
     var mtime = (new Date( fs.statSync(srcPath).mtime )).getTime();
     var compTag = riot.compile(srcTag, riotConfig);
     
@@ -133,7 +164,7 @@ module.exports = {
     var srcTags = glob.sync(`${srcPath}/*.tag`);
     var cmpTags = glob.sync(`${outputPath}/*.js`);
     var needsCompiling = [];
-    
+
     // check if there's a compiled tag for every source tag
     if( srcTags.length && cmpTags.length ){
       var cmpTagsStr = cmpTags.join('|').replace(new RegExp(outputPath, 'g'), '');
@@ -173,7 +204,10 @@ module.exports = {
     }
     
     if( watch ){
-      var watcher = chokidar.watch(srcPath, {
+      var watcher = chokidar.watch([
+        _self.normalizePath(appConfig.paths.LOCALIZATION),
+        srcPath
+      ], {
         ignored: /(^|[\/\\])\../,
         ignoreInitial: true,
         persistent: true
@@ -197,8 +231,14 @@ module.exports = {
         })
         .on('change', function(path){
           clearTimeout(timeout);
-          needsCompiling.push( _self.normalizePath(path) );
-          
+
+          if( path.indexOf('localization.json') > -1 ){
+            _localization = require(appConfig.paths.LOCALIZATION);
+            needsCompiling = srcTags;
+          }else{
+            needsCompiling.push( _self.normalizePath(path) );
+          }
+
           // throttle in case multiple file changes get saved at once
           timeout = setTimeout(function(){
             compileRiotTagsFromQueue(needsCompiling, srcPath, outputPath);

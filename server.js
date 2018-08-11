@@ -141,6 +141,7 @@ var app = {
     watcher = chokidar.watch(
       [
         '*.js',
+        'localization.json',
         'dev/**/*.js',
         'public/views/**/*.js'
       ],

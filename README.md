@@ -71,21 +71,47 @@ You should now be able to hit up the server under `https`, congrats.
 ## Starting app
 
 ```sh
-# prod
 npm start
-
-# dev - watches for file changes
-npm start -- -d
-
-# dev - watches for file changes & reloads app if server file gets updated
-npm run server-dev
 ```
 
 ---
 
 ## Dev
 
+```sh
+# watches for file changes
+npm start -- -d
 
+# watches for file changes & reloads app if server file gets updated
+npm run server-dev
+```
+
+---
+
+## Localization
+
+Currently the only thing that is localized is the user login modal and there
+are only keys for English and French. So if you go to https://localhost:8081/fr-fr
+(when not logged in), you'll get the log-in modal with French text. When a
+lang-locale isn't specified in the URL, it'll default to `en-US`.
+
+List of Locale codes - https://wpastra.com/docs/complete-list-wordpress-locale-codes/
+
+---
+
+## Admin
+
+https://localhost:8081/admin/
+
+Currently there are these Admin categories
+- **Localization** - Currently it's just an interface to see localization values.
+  It's partially set up to accept user input (to change values), but it's not
+  set up to save those changes. Also, the localization isn't being used in any
+  of the components.
+- **Users** - A barebones interface to:
+  - View user info like name and email
+  - View who's currently interacting with the game
+  - Manage user roles or delete users
 
 ---
 

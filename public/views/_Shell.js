@@ -10,25 +10,25 @@ function browserSyncScript(dev){
 
 function addStyles(arr){
   var styles = '';
-  
+
   if( arr && arr.length ){
     for(var i=0; i<arr.length; i++){
       styles += `<link rel="stylesheet" type="text/css" href="${ arr[i] }">`;
     }
   }
-  
+
   return styles;
 }
 
 function addScripts(arr){
   var scripts = '';
-  
+
   if( arr && arr.length ){
     for(var i=0; i<arr.length; i++){
       scripts += `<script language="javascript" type="text/javascript" src="${ arr[i] }"></script>`;
     }
   }
-  
+
   return scripts;
 }
 
@@ -39,7 +39,7 @@ function addIf(val){
 module.exports = function(model){
   return `
     <!DOCTYPE html>
-    <html lang="en-US">
+    <html lang="${ model.langLocale }">
       <head>
         <title>${ model.title }</title>
         <link rel="shortcut icon" type="image/png" href="/imgs/favicon.png">

@@ -1,10 +1,11 @@
-var V1 = '/api/v1';
+const V1 = '/api/v1';
 
 module.exports = {
   v1: {
     _base: V1,
     admin: {
-      USERS: `${ V1 }/admin/users`
+      USERS: `${ V1 }/admin/users`,
+      LOCALIZATION: `${ V1 }/admin/localization`
     },
     CONCAT_TAGS: `${ V1 }/concat/tags`,
     DB_CONFIG_ADD: `${ V1 }/dbconfig/add`,

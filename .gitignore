@@ -11,3 +11,5 @@ conf.database.js
 sys.*
 .configured
 *.iml
+creds.txt
+TODO.md

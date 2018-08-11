@@ -56,11 +56,13 @@
     }
 
     ul {
+      min-width: 8em;
       padding: 0.25em 0 0;
       margin: 0;
       list-style-type: none;
       position: absolute;
       top: 100%;
+      left: 0;
       right: 0;
 
       > li {

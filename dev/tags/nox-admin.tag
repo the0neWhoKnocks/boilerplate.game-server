@@ -3,7 +3,6 @@
   <div class="bodyContainer">
     <nox-vertical-nav ref="sideNav" nav-items={ navItems } disable-on-select="true"></nox-vertical-nav>
     <div if={ currentView } class="section-container">
-      <h2>{ currentView.sectionTitle }</h2>
       <div ref="currView" data-is={ currentView.tagName }></div>
     </div>
   </div>

@@ -3,6 +3,7 @@ var path = require('path');
 var conf = {
   CIPHER_KEY: 'c0wbOyBeeb0p',
   CIPHER_ALGORITHM: 'aes192',
+  DEFAULT_LANG_LOCALE: 'en-US',
   PORT: 8081,
   paths: {
     ROOT: path.resolve(__dirname, './')
@@ -29,6 +30,7 @@ conf.paths.HTTPS_CERT = `${conf.paths.ROOT}/certs/server.crt`;
 conf.paths.HTTPS_KEY = `${conf.paths.ROOT}/certs/server.key`;
 conf.paths.PUBLIC = `${conf.paths.ROOT}/public`;
 conf.paths.RIOT_CONFIG = `${conf.paths.ROOT}/conf.riot.js`;
+conf.paths.LOCALIZATION = `${conf.paths.ROOT}/localization.json`;
 // public
 conf.paths.COMPILED_TAGS = `${conf.paths.PUBLIC}/js/tags`;
 conf.paths.VIEWS = `${conf.paths.PUBLIC}/views`;

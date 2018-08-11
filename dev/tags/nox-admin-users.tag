@@ -33,8 +33,9 @@
       nox-spinner {
 
         .wrapper {
-          right: 50%;
           font-size: 2em;
+          right: 50%;
+          transform: translateY(50%);
         }
       }
     }
@@ -79,6 +80,10 @@
         &.col-controls {
           text-align: center;
           position: relative;
+
+          button {
+            cursor: pointer;
+          }
 
           nox-spinner {
             .wrapper {

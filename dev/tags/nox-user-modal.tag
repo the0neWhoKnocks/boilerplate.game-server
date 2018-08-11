@@ -8,7 +8,7 @@
       onsubmit={ parent.handleSubmit }
     >
       <label class="is--required">
-        Email
+        { parent.localization.emailInputLabel }
         <input
           type="email"
           name="email"
@@ -19,7 +19,7 @@
         >
       </label>
       <label class="is--required">
-        Password
+        { parent.localization.passwordInputLabel }
         <input
           type="password"
           name="password"
@@ -35,7 +35,7 @@
           name="rememberMe"
           value="true"
           checked={ parent.rememberMeChecked }
-        > Remember me.
+        > { parent.localization.rememberMeInputLabel }
       </label>
       <button
         if={ parent.hasSignIn }
@@ -45,10 +45,10 @@
         onclick={ parent.handleSignIn }
         disabled={ parent.submitDisabled }
       >
-        Sign In
+        { parent.localization.signInBtnLabel }
         <nox-spinner ref="signInSpinner"></nox-spinner>
       </button>
-      <div if={ parent.hasSignIn && parent.hasCreate } class="separator-title" data-text="Or">Or</div>
+      <div if={ parent.hasSignIn && parent.hasCreate } class="separator-title" data-text="{ parent.localization.signInCreateSeparator }">{ parent.localization.signInCreateSeparator }</div>
       <button
         if={ parent.hasCreate }
         type="button"
@@ -56,31 +56,31 @@
         onclick={ parent.handleCreate }
         disabled={ parent.submitDisabled }
       >
-        Create an Account
+        { parent.localization.createBtnLabel }
         <nox-spinner ref="createSpinner"></nox-spinner>
       </button>
     </form>
     <div if={ parent.showVerificationMessage }>
-      A verification email was sent to the email address you provided. Once validated, you'll be able to sign in.
+      { parent.localization.verificationMsg }
       <button
         onclick={ parent.closeVerification }
-      >Sign In</button>
+      >{ parent.localization.signInBtnLabel }</button>
     </div>
   </nox-modal>
-  
+
   <style scoped>
     :scope,
     input,
-    button, 
-    *::after, 
+    button,
+    *::after,
     *::before {
       font: 20px Helvetica, Arial, sans-serif;
     }
-    
+
     :scope {
 
     }
-    
+
     label {
       margin-top: 0.5em;
       display: block;
@@ -94,14 +94,14 @@
         color: #ffa500;
       }
     }
-    
+
     input[type="email"],
     input[type="password"] {
       width: 100%;
       padding: 0.25em;
       border: solid 1px #ccc;
     }
-    
+
     .modal {
       width: 18em;
 
@@ -125,7 +125,7 @@
       font-size: 0;
       text-align: center;
       position: relative;
-      
+
       &::before {
         content: '';
         height: 0.1em;
@@ -136,7 +136,7 @@
         right: 0;
         z-index: -1;
       }
-      
+
       &::after {
         content: attr(data-text);
         padding: 0 0.5em;
@@ -153,11 +153,13 @@
       position: relative;
     }
   </style>
-  
+
   <script>
     const _self = this;
+    const _localization = "localization['userModal']";
     const REMEMBER_KEY = 'remembered';
 
+    this.localization = _localization[window.appData.langLocale];
     this.submitDisabled = true;
     this.processing = false;
     this.processingTypes = {
@@ -322,7 +324,7 @@
       RiotControl.one(window.userAPI.events.USER_CREATION_ERROR, _self.handleFormError);
       RiotControl.trigger(window.userAPI.events.USER_CREATE, window.utils.formToJSON(form));
     };
-    
+
     this.on('mount', this.handleMount);
   </script>
 </nox-user-modal>

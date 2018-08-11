@@ -132,10 +132,12 @@ window.utils = {
 
     return new Promise(function(resolve, reject){
       function parseContentType(header){
-        if( header.indexOf('application/javascript') > -1 ){
-          return 'javascript';
-        }else if( header.indexOf('application/json') > -1 ){
-          return 'json';
+        if( header ){
+          if( header.indexOf('application/javascript') > -1 ){
+            return 'javascript';
+          }else if( header.indexOf('application/json') > -1 ){
+            return 'json';
+          }
         }
 
         return '';
